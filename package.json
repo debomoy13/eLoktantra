@@ -10,8 +10,10 @@
     "db:seed": "pnpm --filter @eloktantra/database db:seed"
   },
   "devDependencies": {
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
     "turbo": "^1.12.0",
-    "typescript": "^5.0.0",
-    "@types/node": "^20.0.0"
+    "typescript": "^5.0.0"
   }
 }
