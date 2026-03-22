@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_GATEWAY = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_GATEWAY = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001';
 const REQUEST_TIMEOUT_MS = Number.parseInt(process.env.NEXT_PUBLIC_REQUEST_TIMEOUT_MS || '10000', 10);
 
 export const apiClient = axios.create({

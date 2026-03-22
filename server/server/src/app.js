@@ -9,6 +9,8 @@ dotenv.config();
 
 const authController = require('./controllers/authController');
 const voteController = require('./controllers/voteController');
+const candidateRoutes = require('./routes/candidateRoutes');
+const electionRoutes = require('./routes/electionRoutes');
 
 const app = express();
 app.use(express.json());
@@ -22,11 +24,24 @@ const limiter = rateLimit({
 
 app.use(limiter);
 
-// Database Connection
+// Database Connection with Fallback
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/eloktantra';
-mongoose.connect(MONGO_URI)
-  .then(() => console.log('MongoDB Connected to 127.0.0.1'))
-  .catch(err => console.error('MongoDB Connection Error:', err));
+const connectWithFallback = async () => {
+  try {
+    // Try primary URI
+    await mongoose.connect(MONGO_URI, { serverSelectionTimeoutMS: 5000 });
+    console.log('MongoDB: Connected to Primary (Atlas/Env)');
+  } catch (err) {
+    console.warn('MongoDB: Connection to Primary failed, falling back to Local (127.0.0.1)');
+    try {
+      await mongoose.connect('mongodb://127.0.0.1:27017/eloktantra');
+      console.log('MongoDB: Connected to Localhost');
+    } catch (localErr) {
+      console.error('MongoDB: Fatal - Local connection also failed:', localErr);
+    }
+  }
+};
+connectWithFallback();
 
 // Middleware for Device Check
 app.use((req, res, next) => {
@@ -37,9 +52,20 @@ app.use((req, res, next) => {
 
 // Routes
 app.get('/auth/digilocker/callback', authController.digilockerCallback);
+app.get('/auth/users', authController.getUsers);
 app.post('/verify-face', authController.faceVerify);
 app.post('/risk/evaluate', voteController.evaluateRisk);
 app.post('/generate-token', voteController.generateVotingToken);
+app.get('/vote/count/:id', (req, res) => res.json(0)); // Mock for dashboard stats
+app.post('/auth/login', voteController.generateVotingToken); // Alias for frontend
+app.post('/auth/login', voteController.generateVotingToken); // Alias for frontend
+app.post('/voter/verify', authController.faceVerify); // Alias for face verify
+app.post('/vote/submit', voteController.castVote); // New vote submission route
+app.use('/candidates', candidateRoutes); // Keep standard
+app.use('/voting/candidates', candidateRoutes); // Some frontend calls might use this
+app.use('/elections', electionRoutes); // Standard
+app.use('/voting/elections', electionRoutes); // Frontend detail fetch prefix
+app.use('/election', electionRoutes); // Frontend active fetch prefix
 
 // Error Handling Middleware
 app.use((err, req, res, next) => {

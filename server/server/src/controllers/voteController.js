@@ -51,5 +51,6 @@ const generateVotingToken = async (req, res) => {
 
 module.exports = {
   evaluateRisk,
-  generateVotingToken
+  generateVotingToken,
+  castVote
 };

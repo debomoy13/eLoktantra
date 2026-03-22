@@ -7,24 +7,32 @@ export interface Candidate {
   name: string;
   party: string;
   constituency: string;
+  photo_url?: string;
+  age?: number;
   education: string | null;
-  criminalCases: number;
-  assets: number;
-  liabilities: number;
+  net_worth: string | null;
+  criminal_cases: number;
+  promises: Array<{
+    title: string;
+    status: string;
+  }>;
 }
 
 export const fetchCandidates = async (): Promise<Candidate[]> => {
-  const { data } = await apiClient.get('/candidates');
+  const response = await fetch('/api/candidates');
+  const data = await response.json();
   return data.candidates || [];
 };
 
 export const fetchCandidateById = async (id: string): Promise<Candidate> => {
-  const { data } = await apiClient.get(`/candidates/${id}`);
+  const response = await fetch(`/api/candidates?id=${id}`);
+  const data = await response.json();
   return data.candidate;
 };
 
 export const fetchCandidatesByConstituency = async (constituencyId: string): Promise<Candidate[]> => {
-  const { data } = await apiClient.get(`/candidates/constituency/${constituencyId}`);
+  const response = await fetch(`/api/candidates?constituencyId=${constituencyId}`);
+  const data = await response.json();
   return data.candidates || [];
 };
 

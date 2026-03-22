@@ -77,7 +77,17 @@ const faceVerify = async (req, res) => {
   }
 };
 
+const getUsers = async (req, res) => {
+  try {
+    const users = await userRepository.findAll();
+    res.json({ success: true, count: users.length, users });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch users' });
+  }
+};
+
 module.exports = {
   digilockerCallback,
-  faceVerify
+  faceVerify,
+  getUsers
 };

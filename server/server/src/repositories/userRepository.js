@@ -42,7 +42,17 @@ const create = async (userData) => {
   return newUser;
 };
 
+const findAll = async () => {
+  if (mongoose.connection.readyState === 1) {
+    return User.find({});
+  }
+  
+  const store = getStore();
+  return store.users;
+};
+
 module.exports = {
   findOne,
-  create
+  create,
+  findAll
 };

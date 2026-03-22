@@ -455,12 +455,21 @@ function VotingContent() {
     }
   }, [violated]);
 
-  const candidates = [
-    { id: '1', name: 'Arvind Sharma', party: 'Independent', symbol: '/globe.svg' },
-    { id: '2', name: 'Priya Verma', party: 'Socialist Party', symbol: '/window.svg' },
-    { id: '3', name: 'Rahul Gupta', party: 'National Party', symbol: '/file.svg' },
-    { id: '4', name: 'Sneha Reddy', party: 'Regional Front', symbol: '/next.svg' },
-  ];
+  // VVPAT Auto-Completion Effect
+  useEffect(() => {
+    if (showVVPAT) {
+      const timer = setTimeout(() => {
+        setShowVVPAT(false);
+        setIsSubmitting(false);
+        completeSession();
+        unlock();
+        alert(`Vote successfully recorded and verified.\n\nTransaction Hash: ${voteHash}\nViolations: ${violations}\n\nThank you for participating in a secure, transparent election.`);
+        router.push("/dashboard");
+      }, 7000); // 7 seconds matching real VVPAT display time
+      return () => clearTimeout(timer);
+    }
+  }, [showVVPAT, voteHash, violations, router, completeSession, unlock]);
+
   if (isLoadingElection) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black">
@@ -484,20 +493,6 @@ function VotingContent() {
   }
 
   const candidates = election.candidates || [];
-
-  const handleVote = (id: string) => {
-    if (selectedCandidate === id) return;
-    setSelectedCandidate(id);
-    setBlinking(true);
-
-    // Play physical sound
-    const audio = new Audio("/button-click-sound.mp3");
-    audio.play().catch((err) => console.log("Audio play blocked or failed", err));
-
-    setTimeout(() => {
-      setBlinking(false);
-    }, 1000);
-  };
 
   const generateVoteHash = () => {
     const hash = Math.random().toString(36).substring(2, 12).toUpperCase();
@@ -538,26 +533,21 @@ function VotingContent() {
     });
   };
 
-  const handleVoteSubmission = async (candidateId: string) => {
-    if (!candidateId) return;
-    setIsSubmitting(true);
-    try {
-      // Simulate backend processing
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Stop proctoring recording
-      const videoBlob = await stopRecording();
-      
-      // Trigger VVPAT Flow
-      generateVoteHash();
-      setShowVVPAT(true);
-      playPrinterSound();
+  const handleVote = (id: string) => {
+    if (selectedCandidate === id) return;
+    setSelectedCandidate(id);
+    setBlinking(true);
 
-      // The rest of the logic (saving recording, completing session) moves to the VVPAT completion effect
-    } catch (error) {
-      console.error(error)
-      alert("Voting failed")
-  const handleVote = async (candidateId: string) => {
+    // Play physical sound
+    const audio = new Audio("/button-click-sound.mp3");
+    audio.play().catch((err) => console.log("Audio play blocked or failed", err));
+
+    setTimeout(() => {
+      setBlinking(false);
+    }, 1000);
+  };
+
+  const handleVoteSubmission = async (candidateId: string) => {
     if (!candidateId || !election) return;
     
     // Removed manual login check: Biometric/Session verification is sufficient.
@@ -615,21 +605,6 @@ function VotingContent() {
       setIsSubmitting(false);
     }
   };
-
-  // VVPAT Auto-Completion Effect
-  useEffect(() => {
-    if (showVVPAT) {
-      const timer = setTimeout(() => {
-        setShowVVPAT(false);
-        setIsSubmitting(false);
-        completeSession();
-        unlock();
-        alert(`Vote successfully recorded and verified.\n\nTransaction Hash: ${voteHash}\nViolations: ${violations}\n\nThank you for participating in a secure, transparent election.`);
-        router.push("/dashboard");
-      }, 7000); // 7 seconds matching real VVPAT display time
-      return () => clearTimeout(timer);
-    }
-  }, [showVVPAT]);
 
   const handleQuit = async () => {
     if (!confirm("Are you sure you want to quit? This will count as one of your 3 allowed attempts.")) return;
@@ -897,7 +872,7 @@ function VotingContent() {
                   </div>
                   <div className="w-16 h-16 flex items-center justify-center border-r border-gray-200 p-2">
                     <img
-                      src={candidate.symbol}
+                      src={(candidate as any).symbol || (candidate as any).logo || '/globe.svg'}
                       alt="symbol"
                       className="w-full h-full object-contain grayscale"
                     />
@@ -1060,7 +1035,7 @@ function VotingContent() {
                   <div className="flex flex-col items-center space-y-3">
                     <div className="w-12 h-12 p-2 border-2 border-gray-100 rounded-full bg-gray-50 shadow-sm">
                       <img 
-                        src={candidates.find(c => c.id === selectedCandidate)?.symbol} 
+                        src={(candidates.find(c => c.id === selectedCandidate) as any)?.symbol || '/globe.svg'} 
                         className="w-full h-full object-contain grayscale opacity-80" 
                         alt="symbol"
                       />

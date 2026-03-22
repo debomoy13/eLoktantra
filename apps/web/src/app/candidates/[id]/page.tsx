@@ -1,24 +1,31 @@
 'use client';
 
 import Link from 'next/link';
+import { useCandidate } from '@/lib/api/candidates';
+import { useParams } from 'next/navigation';
 
-export default function CandidateProfilePage({ params }: { params: { id: string } }) {
-  // Mock data for UI demonstration
-  const candidate = {
-    id: params.id,
-    name: 'Arvind Sharma',
-    party: 'Independent',
-    constituency: 'South Delhi',
-    education: 'Masters in Political Science',
-    criminalCases: 0,
-    assets: 15000000,
-    liabilities: 2000000,
-    promises: [
-      { id: 1, title: '24/7 Water Supply', progress: 65, status: 'In Progress' },
-      { id: 2, title: 'Digital Literacy for All', progress: 40, status: 'In Progress' },
-      { id: 3, title: 'New Public Hospital', progress: 10, status: 'Not Started' },
-    ]
-  };
+export default function CandidateProfilePage() {
+  const params = useParams();
+  const id = params?.id as string;
+  const { data: candidate, isLoading, isError } = useCandidate(id);
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-32 min-h-screen">
+        <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mb-6"></div>
+        <p className="text-gray-500 font-black uppercase tracking-widest text-[10px]">Loading Audit Data...</p>
+      </div>
+    );
+  }
+
+  if (isError || !candidate) {
+    return (
+      <div className="container mx-auto px-4 py-12 text-center">
+        <h2 className="text-2xl font-black text-white mb-4">CANDIDATE NOT FOUND</h2>
+        <Link href="/candidates" className="text-primary font-bold">Return to Directory</Link>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-12">
@@ -36,8 +43,12 @@ export default function CandidateProfilePage({ params }: { params: { id: string 
           {/* Header Region - Left Col */}
           <div className="lg:col-span-4">
             <div className="glass-card p-10 text-center sticky top-24 border-white/5">
-              <div className="w-32 h-32 rounded-3xl bg-primary/10 flex items-center justify-center font-black text-5xl text-primary mx-auto mb-8 shadow-2xl shadow-primary/20">
-                {candidate.name.charAt(0)}
+              <div className="w-32 h-32 rounded-3xl bg-secondary/50 flex items-center justify-center font-black text-5xl text-primary mx-auto mb-8 shadow-2xl overflow-hidden shadow-primary/20">
+                {candidate.photo_url ? (
+                  <img src={candidate.photo_url} alt={candidate.name} className="w-full h-full object-cover" />
+                ) : (
+                  candidate.name.charAt(0)
+                )}
               </div>
               <h1 className="text-3xl font-black mb-2 orange-text-gradient uppercase tracking-tight">{candidate.name}</h1>
               <p className="text-lg text-gray-400 font-bold mb-8">{candidate.party}</p>
@@ -47,9 +58,9 @@ export default function CandidateProfilePage({ params }: { params: { id: string 
                   <div className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1">Constituency</div>
                   <div className="text-lg font-bold text-gray-200">{candidate.constituency}</div>
                 </div>
-                <div className={`p-4 rounded-2xl border ${candidate.criminalCases > 0 ? 'bg-red-500/10 border-red-500/20 text-red-500' : 'bg-green-500/10 border-green-500/20 text-green-500'}`}>
+                <div className={`p-4 rounded-2xl border ${candidate.criminal_cases > 0 ? 'bg-red-500/10 border-red-500/20 text-red-500' : 'bg-green-500/10 border-green-500/20 text-green-500'}`}>
                   <div className="text-[10px] font-black uppercase tracking-widest opacity-70 mb-1">Criminal Cases</div>
-                  <div className="text-2xl font-black">{candidate.criminalCases}</div>
+                  <div className="text-2xl font-black">{candidate.criminal_cases}</div>
                 </div>
               </div>
             </div>
@@ -65,20 +76,14 @@ export default function CandidateProfilePage({ params }: { params: { id: string 
                   <h3 className="text-sm font-black text-gray-500 uppercase tracking-widest mb-4">Background</h3>
                   <div className="p-6 rounded-2xl bg-secondary/30 border border-white/5">
                     <div className="text-xs font-bold text-gray-500 mb-1">Education</div>
-                    <div className="text-lg font-bold text-gray-200">{candidate.education}</div>
+                    <div className="text-lg font-bold text-gray-200">{candidate.education || 'Not Disclosed'}</div>
                   </div>
                 </div>
                 <div>
                   <h3 className="text-sm font-black text-gray-500 uppercase tracking-widest mb-4">Wealth Check</h3>
-                  <div className="space-y-4">
-                    <div className="p-4 rounded-2xl bg-secondary/30 border border-white/5 flex justify-between items-center">
-                      <span className="text-sm font-bold text-gray-500">Assets</span>
-                      <span className="text-lg font-bold text-green-500">₹{candidate.assets.toLocaleString('en-IN')}</span>
-                    </div>
-                    <div className="p-4 rounded-2xl bg-secondary/30 border border-white/5 flex justify-between items-center">
-                      <span className="text-sm font-bold text-gray-500">Liabilities</span>
-                      <span className="text-lg font-bold text-red-500">₹{candidate.liabilities.toLocaleString('en-IN')}</span>
-                    </div>
+                  <div className="p-6 rounded-2xl bg-secondary/30 border border-white/5">
+                    <div className="text-xs font-bold text-gray-500 mb-1">Net Worth</div>
+                    <div className="text-2xl font-black text-green-500">₹{candidate.net_worth || '0'}</div>
                   </div>
                 </div>
               </div>
@@ -88,27 +93,31 @@ export default function CandidateProfilePage({ params }: { params: { id: string 
             <section className="glass-card p-8 border-white/5">
               <h2 className="text-2xl font-black mb-8 border-b border-white/5 pb-4 uppercase tracking-tight">Campaign Promises</h2>
               <div className="space-y-8">
-                {candidate.promises.map(promise => (
-                  <div key={promise.id} className="space-y-3">
-                    <div className="flex justify-between items-end">
-                      <div>
-                        <h4 className="font-black text-gray-200">{promise.title}</h4>
-                        <span className={`text-[10px] font-black uppercase tracking-widest ${
-                          promise.status === 'Completed' ? 'text-green-500' : 'text-primary'
-                        }`}>
-                          {promise.status}
-                        </span>
+                {(candidate.promises && candidate.promises.length > 0) ? (
+                  candidate.promises.map((promise, index) => (
+                    <div key={index} className="space-y-3">
+                      <div className="flex justify-between items-end">
+                        <div>
+                          <h4 className="font-black text-gray-200">{promise.title}</h4>
+                          <span className={`text-[10px] font-black uppercase tracking-widest ${
+                            promise.status === 'Completed' ? 'text-green-500' : 'text-primary'
+                          }`}>
+                            {promise.status}
+                          </span>
+                        </div>
                       </div>
-                      <span className="text-xl font-black orange-text-gradient">{promise.progress}%</span>
+                      <div className="w-full h-3 bg-secondary rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full orange-gradient transition-all duration-1000 ${
+                            promise.status === 'Completed' ? 'w-full' : promise.status === 'InProgress' ? 'w-1/2' : 'w-[5%]'
+                          }`} 
+                        />
+                      </div>
                     </div>
-                    <div className="w-full h-3 bg-secondary rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-primary orange-gradient transition-all duration-1000" 
-                        style={{ width: `${promise.progress}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-gray-500 font-bold">No campaign promises registered for this candidate.</p>
+                )}
               </div>
             </section>
           </div>

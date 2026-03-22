@@ -4,6 +4,18 @@ import { authOptions } from '@/lib/auth';
 import connectDB from '@/lib/mongodb';
 import Candidate from '@/models/Candidate';
 
+export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    await connectDB();
+    const candidate = await Candidate.findById(params.id);
+    if (!candidate) return NextResponse.json({ error: 'Candidate not found' }, { status: 404 });
+    return NextResponse.json({ success: true, data: candidate });
+  } catch (error: any) {
+    console.error('API_GET_CANDIDATE_ERROR:', error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
