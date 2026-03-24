@@ -23,11 +23,12 @@ const Navbar = () => {
   const navLinks = [
     { label: 'Candidates', href: '/candidates' },
     { label: 'Elections', href: '/elections' },
+    { label: 'Manifestos', href: '/manifestos' },
     { label: 'Issues', href: '/issues' },
-    { label: 'Promises', href: '/promises' },
-    { label: 'Manifestos', href: '/manifestos/compare' },
     { label: 'Dashboard', href: '/dashboard' },
+
   ];
+
 
   return (
     <>

@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
         id: user._id,
         name: user.name,
         phone: user.phone,
-        constituency: user.constituency,
+        constituency: user.constituencyId,
         isVerified: user.isVerified,
         hasVoted: user.hasVoted
       }

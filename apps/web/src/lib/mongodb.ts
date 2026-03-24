@@ -1,16 +1,20 @@
 import mongoose from 'mongoose';
 import { MongoClient } from 'mongodb';
 
-// ═══════════════════════════════════════════════════════
-// ELOKTANTRA UNIFIED DATABASE BRIDGE 🛡️🔐⚡
-// Provides BOTH Mongoose (for models) AND MongoClient (for direct ops)
-// ═══════════════════════════════════════════════════════
+/**
+ * ELOKTANTRA UNIFIED DATABASE BRIDGE 🛡️🔐⚡
+ * Port 3000 & 3001 Connection Sync with Fallback
+ */
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://eloktantra:tonicsteamtech@cluster0.bzfsujx.mongodb.net/eloktantra?retryWrites=true&w=majority&appName=Cluster0';
+const MONGODB_URI = process.env.MONGODB_URI as string;
+const LOCAL_FALLBACK = 'mongodb://127.0.0.1:27017/eloktantra';
 
-// ─── MONGOOSE CONNECTION (for ElectionModels) ──────────────────────────────
+if (!MONGODB_URI) {
+  throw new Error('MONGODB_URI is undefined in environment');
+}
+
+// ─── MONGOOSE CONNECTION (Standardized per eloktantra-admin) ──────────────────
 let mongooseCache = (global as any)._mongooseCache;
-
 if (!mongooseCache) {
   mongooseCache = (global as any)._mongooseCache = { conn: null, promise: null };
 }
@@ -20,71 +24,43 @@ export async function connectDB() {
     return mongooseCache.conn;
   }
 
+  const opts = { bufferCommands: false };
+
   if (!mongooseCache.promise) {
-    const opts = { bufferCommands: false };
+    console.log('🌍 DATABASE: Handshaking with Gateway Ledger...');
     mongooseCache.promise = mongoose.connect(MONGODB_URI, opts).catch((err) => {
-      console.error('❌ Mongoose Connect Error:', err.message);
-      mongooseCache.promise = null;
-      return null;
+      console.warn('🛰️ ATLAS: Connection timeout for Port 3000. Switching to Local Cluster...');
+      return mongoose.connect(LOCAL_FALLBACK, opts);
     });
   }
 
   try {
     mongooseCache.conn = await mongooseCache.promise;
-    if (mongooseCache.conn) {
-      console.log('✅ Mongoose: Connected to MongoDB');
-    }
+    console.log('✅ Mongoose: Unified connection established');
+    return mongooseCache.conn;
   } catch (e: any) {
-    console.error('❌ Mongoose connection failed:', e.message);
+    console.error('❌ Mongoose: Total database handshake failure', e.message);
     mongooseCache.promise = null;
+    throw e; // Throw so caller sees the real cause
   }
-
-  return mongooseCache.conn;
 }
 
-// ─── MONGO CLIENT (for direct collection access) ───────────────────────────
+// ─── MONGO CLIENT (Legacy / Direct operations) ──────────────────────────────
 let clientCache: MongoClient | null = null;
-let clientFailed = false;
+let clientPromise: Promise<MongoClient | null> | null = null;
 
 export async function getClient(): Promise<MongoClient | null> {
-  // If the last attempt succeeded, reuse
-  if (clientCache) {
-    try {
-      await clientCache.db().admin().command({ ping: 1 });
-      return clientCache;
-    } catch {
-      // Connection died, reset cache
-      clientCache = null;
-      clientFailed = false;
-    }
+  if (clientCache) return clientCache;
+
+  if (!clientPromise) {
+    clientPromise = MongoClient.connect(MONGODB_URI).catch(() => {
+        return MongoClient.connect(LOCAL_FALLBACK);
+    });
   }
-
-  // Don't retry if already failed this cycle (prevents spam)
-  if (clientFailed) return null;
-
-  try {
-    console.log('🌍 ATLAS: Initiating secure handshake...');
-    const newClient = new MongoClient(MONGODB_URI, {
-      connectTimeoutMS: 10000,
-      serverSelectionTimeoutMS: 10000,
-      family: 4, // Force IPv4 on Windows
-    } as any);
-
-    await newClient.connect();
-    clientCache = newClient;
-    console.log('✅ MongoClient: Cloud connection ACTIVE!');
-    return clientCache;
-  } catch (err: any) {
-    console.error('❌ MongoClient connection failed:', err.message);
-    clientFailed = true;
-    // Reset after 30 seconds to allow retry
-    setTimeout(() => { clientFailed = false; }, 30000);
-    return null;
-  }
+  
+  clientCache = await clientPromise;
+  return clientCache;
 }
 
-// ─── BACKWARDS COMPATIBLE EXPORTS ─────────────────────────────────────────
-// Many routes import `clientPromise` — this satisfies them.
-const clientPromise: Promise<MongoClient | null> = getClient();
-
-export default clientPromise;
+const clientDefaultPromise: Promise<MongoClient | null> = getClient();
+export default clientDefaultPromise;
