@@ -3,9 +3,9 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import axios from 'axios';
 import toast from 'react-hot-toast';
 import { Save, Loader2 } from 'lucide-react';
+import { adminCreateConstituency } from '@/lib/api';
 
 const constituencySchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -36,16 +36,16 @@ export default function ConstituencyForm({ onSuccess, initialData }: Constituenc
 
   const onSubmit = async (values: ConstituencyFormValues) => {
     try {
-      if (initialData?._id) {
-        await axios.put(`/api/constituencies/${initialData._id}`, values);
+      if (initialData?.id || initialData?._id) {
+        await adminCreateConstituency({ ...values, id: initialData.id || initialData._id });
         toast.success('Constituency updated');
       } else {
-        await axios.post('/api/constituencies', values);
+        await adminCreateConstituency(values);
         toast.success('Constituency added successfully');
       }
       onSuccess();
     } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to save constituency');
+      toast.error(error.response?.data?.message || 'Failed to save constituency');
     }
   };
 

@@ -20,7 +20,8 @@ export default function RegisterVoterPage() {
     const loadElections = async () => {
       try {
         const { data } = await adminGetElections();
-        setElections(data.elections || []);
+        const list = Array.isArray(data) ? data : (data.data || data.elections || []);
+        setElections(list);
       } catch (error) {
         toast.error('Failed to load election cycles');
       }
@@ -36,7 +37,8 @@ export default function RegisterVoterPage() {
     const loadConstituencies = async () => {
       try {
         const { data } = await adminGetConstituencies(selectedElection);
-        setConstituencies(data.constituencies || []);
+        const list = Array.isArray(data) ? data : (data.data || data.constituencies || []);
+        setConstituencies(list);
       } catch (error) {
         toast.error('Failed to load regions');
       }
@@ -55,10 +57,16 @@ export default function RegisterVoterPage() {
     try {
       const voters = JSON.parse(payload);
       
-      // Bulk enrollment with Election Scoping
-      await backendAPI.post('/api/admin/electoral-roll', {
-        electionId: selectedElection,
-        voters: Array.isArray(voters) ? voters.map(v => ({...v, constituencyId: selectedConstituency})) : [{...voters, constituencyId: selectedConstituency}]
+      // Map to NestJS RegisterVoterDto
+      const formattedVoters = (Array.isArray(voters) ? voters : [voters]).map(v => ({
+        voter_id: v.voterId || v.voter_id,
+        name: v.name,
+        booth_id: selectedConstituency,
+        election_id: selectedElection
+      }));
+
+      await backendAPI.post('/api/voter/register', {
+        voters: formattedVoters
       });
 
       toast.success('National citizen ledger updated');

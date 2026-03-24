@@ -9,7 +9,7 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import { Plus, Trash2, Save, X, ChevronRight, User, Shield, Globe, Award } from 'lucide-react';
 import { Party, Constituency, Election } from '@/types';
-import { contentAPI as backendAPI, adminGetParties, adminGetConstituencies, adminCreateCandidate, adminGetActiveElection } from '@/lib/api';
+import { contentAPI as backendAPI, adminGetParties, adminGetConstituencies, adminCreateCandidate, adminGetElections } from '@/lib/api';
 
 const candidateSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -60,11 +60,17 @@ export default function CandidateForm({ initialData, id }: { initialData?: any, 
         const [pRes, cRes, eRes] = await Promise.all([
           adminGetParties(),
           adminGetConstituencies(),
-          adminGetActiveElection().catch(() => ({ data: { data: [] } }))
+          adminGetElections()
         ]);
-        setParties(pRes.data.data || []);
-        setConstituencies(cRes.data.data || []);
-        setActiveElections(Array.isArray(eRes.data) ? eRes.data : eRes.data.data || []);
+        
+        // NestJS returns arrays directly or in .data
+        const pList = Array.isArray(pRes.data) ? pRes.data : (pRes.data.data || []);
+        const cList = Array.isArray(cRes.data) ? cRes.data : (cRes.data.data || []);
+        const eList = Array.isArray(eRes.data) ? eRes.data : (eRes.data.elections || eRes.data.data || []);
+
+        setParties(pList);
+        setConstituencies(cList);
+        setActiveElections(eList);
       } catch (error) {
         console.error('Failed to load form dependencies', error);
       }
@@ -108,7 +114,13 @@ export default function CandidateForm({ initialData, id }: { initialData?: any, 
         ))}
       </div>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="p-10">
+      <form 
+        onSubmit={handleSubmit(onSubmit, (errors) => {
+          console.error('FORM_VALIDATION_ERRORS:', errors);
+          toast.error('Validation failed! Please check all tabs for required fields.');
+        })} 
+        className="p-10"
+      >
         {activeTab === 'basic' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-2">
@@ -124,35 +136,47 @@ export default function CandidateForm({ initialData, id }: { initialData?: any, 
             <div className="space-y-2">
               <label className="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">Political Party</label>
               <select 
+                value={watch('partyId')}
                 onChange={(e) => {
-                  const party = parties.find(p => p._id === e.target.value);
+                  const party = parties.find(p => (p.id || (p as any)._id) === e.target.value);
                   if (party) {
-                    setValue('partyId', party._id);
-                    setValue('party', party.name);
+                    setValue('partyId', (party.id || (party as any)._id) as string, { shouldValidate: true });
+                    setValue('party', party.name, { shouldValidate: true });
                   }
                 }}
                 className="w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all font-medium appearance-none cursor-pointer"
               >
                 <option value="">Select Party</option>
-                {parties.map(p => <option key={p._id} value={p._id} selected={watch('partyId') === p._id}>{p.name} ({p.abbreviation})</option>)}
+                {parties.map(p => (
+                  <option key={p.id || (p as any)._id} value={p.id || (p as any)._id}>
+                    {p.name} ({p.abbreviation})
+                  </option>
+                ))}
               </select>
+              {errors.partyId && <p className="text-red-500 text-[10px] font-bold mt-1 px-1 uppercase">{errors.partyId.message || 'Party is required'}</p>}
             </div>
 
             <div className="space-y-2">
               <label className="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">Constituency</label>
               <select 
+                value={watch('constituencyId')}
                 onChange={(e) => {
-                  const consti = constituencies.find(c => c._id === e.target.value);
+                  const consti = constituencies.find(c => (c.id || (c as any)._id) === e.target.value);
                   if (consti) {
-                    setValue('constituencyId', consti._id);
-                    setValue('constituency', consti.name);
+                    setValue('constituencyId', (consti.id || (consti as any)._id) as string, { shouldValidate: true });
+                    setValue('constituency', consti.name, { shouldValidate: true });
                   }
                 }}
                 className="w-full px-5 py-3.5 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all font-medium appearance-none cursor-pointer"
               >
                 <option value="">Select Constituency</option>
-                {constituencies.map(c => <option key={c._id} value={c._id} selected={watch('constituencyId') === c._id}>{c.name} ({c.state})</option>)}
+                {constituencies.map(c => (
+                  <option key={c.id || (c as any)._id} value={c.id || (c as any)._id}>
+                    {c.name} ({c.state})
+                  </option>
+                ))}
               </select>
+              {errors.constituencyId && <p className="text-red-500 text-[10px] font-bold mt-1 px-1 uppercase">{errors.constituencyId.message || 'Constituency is required'}</p>}
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -231,6 +255,7 @@ export default function CandidateForm({ initialData, id }: { initialData?: any, 
                 <option value="">Select active election...</option>
                 {activeElections.map(e => <option key={e.id} value={e.id}>{e.title}</option>)}
               </select>
+              {errors.electionId && <p className="text-red-500 text-[10px] font-bold mt-1 px-1 uppercase">{errors.electionId.message}</p>}
               <p className="text-[10px] text-gray-400 font-bold px-1 italic">This candidate will be automatically added to the ballot for the selected election.</p>
             </div>
 
@@ -302,7 +327,7 @@ export default function CandidateForm({ initialData, id }: { initialData?: any, 
                 disabled={isSubmitting}
                 className="px-10 py-3.5 bg-orange-500 text-white text-sm font-black rounded-2xl hover:bg-amber-600 transition-all flex items-center active:scale-95 shadow-lg shadow-orange-500/20 uppercase tracking-widest"
               >
-                <Save className="w-4 h-4 mr-2" /> {isSubmitting ? 'Saving...' : 'Finalize Nomination'}
+                <Save className="w-4 h-4 mr-2" /> {isSubmitting ? 'NOMINATING...' : 'Finalize Nomination'}
               </button>
             )}
           </div>
