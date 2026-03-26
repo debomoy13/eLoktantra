@@ -1,9 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import axios from 'axios';
+import { getBackendUrl } from '@/lib/api/config';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'https://backend-elokantra.onrender.com';
+const ACTUAL_BACKEND = getBackendUrl();
 
 /**
  * GET /api/election/active
@@ -11,9 +13,12 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'https://backend-elokantr
  */
 export async function GET() {
   try {
-    const res = await axios.get(`${BACKEND_URL}/api/elections/active`);
+    const res = await axios.get(`${ACTUAL_BACKEND}/api/elections/active`, {
+        timeout: 45000
+    });
     return NextResponse.json(res.data);
   } catch (err: any) {
+    console.error('Active election fetch failed:', err.message);
     return NextResponse.json({ 
         success: false, 
         error: err.response?.data?.error || err.message || 'No active election found' 

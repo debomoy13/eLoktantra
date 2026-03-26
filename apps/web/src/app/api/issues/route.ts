@@ -1,52 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
+import { getBackendUrl, ADMIN_API_KEY } from '@/lib/api/config';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'https://backend-elokantra.onrender.com';
+const ACTUAL_BACKEND = getBackendUrl();
 
-// GET /api/issues -> Fetch from Render
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const electionId = searchParams.get('electionId');
     const constituencyId = searchParams.get('constituencyId');
 
-    const res = await axios.get(`${BACKEND_URL}/api/admin/issue`, {
-        params: { electionId, constituencyId },
-        headers: {
-            'x-admin-key': process.env.ADMIN_API_KEY || 'eLoktantra-AdminPortal-SecretKey-2024'
-        }
+    const res = await axios.get(`${ACTUAL_BACKEND}/api/issues`, {
+      params: { electionId, constituencyId },
+      timeout: 45000
     });
 
-    const data = res.data;
-    const list = Array.isArray(data) ? data : (data.issues || data.data || []);
-    
+    // Senior Fix: Standardize response shape
+    const result = res.data;
+    const list = result.issues || result.data || result.list || [];
+
     return NextResponse.json({ 
       success: true, 
       count: list.length, 
-      issues: list.map((i: any) => ({ ...i, id: i.id || i._id?.toString() })) 
+      issues: list 
     });
   } catch (err: any) {
-    console.error('Issue proxy GET error:', err.message);
-    return NextResponse.json({ success: false, error: 'Source of truth offline' }, { status: 502 });
+    console.error('Issues fetch failed:', err.message);
+    return NextResponse.json({ success: false, error: err.message }, { status: 502 });
   }
 }
 
-// POST /api/issues -> Create in Render
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    
-    const res = await axios.post(`${BACKEND_URL}/api/admin/issue`, body, {
-        headers: {
-            'x-admin-key': process.env.ADMIN_API_KEY || 'eLoktantra-AdminPortal-SecretKey-2024'
-        }
+    const res = await axios.post(`${ACTUAL_BACKEND}/api/issues`, body, {
+       headers: { 'x-admin-key': ADMIN_API_KEY },
+       timeout: 45000
     });
-
-    return NextResponse.json(res.data, { status: 201 });
+    return NextResponse.json(res.data);
   } catch (err: any) {
-    console.error('Issue proxy POST error:', err.message);
-    return NextResponse.json({ success: false, error: 'Failed to record grievance' }, { status: 502 });
+    console.error('Issue creation failed:', err.message);
+    return NextResponse.json({ success: false, error: err.message }, { status: 502 });
   }
 }

@@ -1,43 +1,33 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import axios from 'axios';
+import { getBackendUrl } from '@/lib/api/config';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'https://backend-elokantra.onrender.com';
+const ACTUAL_BACKEND = getBackendUrl();
 
-// GET /api/elections
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const { searchParams } = new URL(request.url);
-    const activeOnly = searchParams.get('active') === 'true'; // Change default to show all
-
-    // Call the centralized backend election endpoint (using admin route for full view)
-    const res = await axios.get(`${BACKEND_URL}/api/admin/election`, {
-      headers: {
-        'x-admin-key': process.env.ADMIN_API_KEY || 'eLoktantra-AdminPortal-SecretKey-2024'
-      },
-      timeout: 120000 // 120s timeout (Max for Render cold-starts)
+    const res = await axios.get(`${ACTUAL_BACKEND}/api/elections`, {
+        timeout: 45000
     });
-
-    const data = res.data;
-    let elections = Array.isArray(data) ? data : (data.elections || data.data || []);
-
-    // Filter logic using the backend 'status' field
-    if (activeOnly) {
-      elections = elections.filter((e: any) => e.status === 'ACTIVE');
-    }
-
-    // Normalize for frontend
-    const normalized = elections.map((e: any) => ({ 
-      ...e, 
-      id: e.id || e._id?.toString(),
-      title: e.title || e.name || 'Untitled',
-      isActive: e.status === 'ACTIVE'
-    }));
-
-    return NextResponse.json({ success: true, count: normalized.length, elections: normalized });
+    
+    // Senior Fix: Standardize response shape for the frontend
+    const result = res.data;
+    const elections = result.elections || result.data || result.list || [];
+    
+    return NextResponse.json({ 
+      success: true, 
+      count: elections.length, 
+      elections: elections.map((e: any) => ({
+        ...e,
+        _id: e.id || e._id, // Support both ID formats
+        title: e.title || e.name || 'Untitled Election' // Support both title/name formats
+      }))
+    });
   } catch (err: any) {
-    console.error('Election proxy error:', err.message);
-    return NextResponse.json({ success: false, error: 'Source of truth offline' }, { status: 502 });
+    console.error('Elections fetch failed:', err.message);
+    return NextResponse.json({ success: false, error: err.message }, { status: 502 });
   }
 }

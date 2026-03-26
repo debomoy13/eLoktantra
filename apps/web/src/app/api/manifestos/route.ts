@@ -1,24 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import axios from 'axios';
+import { getBackendUrl, ADMIN_API_KEY } from '@/lib/api/config';
 
 // Critical: Set max duration for Render/Vercel to survive cold starts
-export const maxDuration = 60; // Reduced from 120 to fail faster
+export const maxDuration = 60; 
 export const dynamic = 'force-dynamic';
-
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL || 
-                    process.env.NEXT_PUBLIC_API_URL || 
-                    'https://backend-elokantra.onrender.com';
-
-// Ensure we don't accidentally proxy to ourselves (localhost:3000)
-const ACTUAL_BACKEND = BACKEND_URL.includes('localhost:3000') 
-  ? 'https://backend-elokantra.onrender.com' 
-  : BACKEND_URL;
-
-const ADMIN_API_KEY = process.env.ADMIN_API_KEY || 'eLoktantra-AdminPortal-SecretKey-2024';
 
 // Simple in-memory cache to prevent "flooding" Render with identical requests
 const cache = new Map<string, { data: any, timestamp: number }>();
 const CACHE_TTL = 30000; // 30 seconds
+
+const ACTUAL_BACKEND = getBackendUrl();
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
