@@ -3,8 +3,11 @@ dist/
 build/
 .next/
 .env
+.env*
 .env.local
-.env.*
+.env.local.example
+.env.test
+.env.production
 !.env.example
 .DS_Store
 *.log

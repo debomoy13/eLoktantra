@@ -356,7 +356,7 @@ function VotingContent() {
               const ctx = canvas.getContext("2d");
               if (ctx) {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
-                detections.forEach(det => {
+                detections.forEach((det: any) => {
                   const { x, y, width, height } = (det as any).detection.box;
                   ctx.strokeStyle = isAlignedNow ? "#22c55e" : "#ef4444";
                   ctx.lineWidth = 3;
